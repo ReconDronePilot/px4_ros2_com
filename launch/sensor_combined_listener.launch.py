@@ -56,7 +56,31 @@ def generate_launch_description():
         shell=True,
     )
 
+    vehicle_gps_position_listener = Node(
+        package='px4_ros_com',
+        executable='vehicle_gps_position_listener',
+        output='screen',
+        shell=True,
+    )
+
+    offboard_control = Node(
+        package='px4_ros_com',
+        executable='offboard_control',
+        output='screen',
+        shell=True,
+    )
+
+    manual_control = Node(
+        package='px4_ros_com',
+        executable='manual_control',
+        output='screen',
+        shell=True,
+    )
+
     return LaunchDescription([
         #micro_ros_agent,
-        sensor_combined_listener_node
+        #sensor_combined_listener_node
+        #vehicle_gps_position_listener
+        #offboard_control
+        manual_control
     ])

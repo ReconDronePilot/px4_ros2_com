@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/opt/ros/humble/include/**",
+        "/home/mea/Micro-XRCE-DDS-Agent/include/**",
+        "/home/mea/px4_ros2_com/include/**",
+        "/home/mea/ws_docker_ros2/Micro-XRCE-DDS-Agent/include/**",
+        "/home/mea/ws_docker_ros2/ws/src/px4_ros_com/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
