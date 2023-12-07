@@ -77,7 +77,7 @@ public:
 				this->publish_trajectory_setpoint(0.0, 0.0, 5.0, -3.14/2);
 			}
 
-			if(offboard_setpoint_counter_>200){
+			if(offboard_setpoint_counter_>200 && offboard_setpoint_counter_<=300 ){
 				this->publish_offboard_control_mode();
 				// takeoff();
 				this->publish_trajectory_setpoint(0.0, 0.0, -0.5, -3.14/2);
