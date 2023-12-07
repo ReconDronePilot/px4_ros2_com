@@ -81,10 +81,10 @@ public:
 				this->publish_offboard_control_mode();
 				// takeoff();
 				this->publish_trajectory_setpoint(0.0, 0.0, -0.5, -3.14/2);
-				if(vehicle_home_alt >= vehicle_alt-alt_err && vehicle_home_alt <= vehicle_alt+alt_err) { this->disarm(); } // AJOUTER LAND()
+				if(vehicle_home_alt >= vehicle_alt-alt_err && vehicle_home_alt <= vehicle_alt+alt_err) { this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_NAV_LAND); } // AJOUTER LAND()
 			}			
 			// stop the counter after reaching 11
-			if (offboard_setpoint_counter_ < 1000) {
+			if (offboard_setpoint_counter_ < 500) {
 				offboard_setpoint_counter_++;
 			}
 
