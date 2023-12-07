@@ -60,6 +60,11 @@ add_executable(offboard_control src/examples/offboard/offboard_control.cpp)
 ament_target_dependencies(offboard_control rclcpp px4_msgs)
 install(TARGETS offboard_control DESTINATION lib/${PROJECT_NAME})
 
+# examples/offboard/manual_control
+add_executable(manual_control src/examples/offboard/manual_control.cpp)
+ament_target_dependencies(manual_control rclcpp px4_msgs)
+install(TARGETS manual_control DESTINATION lib/${PROJECT_NAME})
+
 
 ############
 # Install ##

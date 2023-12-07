@@ -25,16 +25,22 @@ using namespace std::chrono;
 using namespace std::chrono_literals;
 using namespace px4_msgs::msg;
 
-float vehicle_alt = 0.0;
-float vehicle_home_alt = 0.0;
-bool home_set = false;
-float alt_err = 1;
+float vehicle_alt;
+float vehicle_home_alt;
+bool home_set;
+float alt_err;	
 
 class OffboardControl : public rclcpp::Node
 {
 public:
 	OffboardControl() : Node("offboard_control")
 	{
+
+		vehicle_alt = 0.0;
+		vehicle_home_alt = 0.0;
+		home_set = false;
+		alt_err = 1;
+
 		rmw_qos_profile_t qos_profile = rmw_qos_profile_sensor_data;
 		auto qos = rclcpp::QoS(rclcpp::QoSInitialization(qos_profile.history, 5), qos_profile);
 
@@ -43,7 +49,7 @@ public:
 		vehicle_command_publisher_ = this->create_publisher<VehicleCommand>("/fmu/in/vehicle_command", 10);
 
 		//float vehicle_alt = 0.0;
-		vehicle_gps_subscriber_ = this->create_subscription<SensorGps>("/fmu/out/vehicle_gps_position", qos,[this, &vehicle_alt, &home_set](const SensorGps::UniquePtr msg) {
+		vehicle_gps_subscriber_ = this->create_subscription<SensorGps>("/fmu/out/vehicle_gps_position", qos,[this](const SensorGps::UniquePtr msg) {
 			if(!home_set){ 
 				vehicle_home_alt = msg->altitude_msl_m;
 				home_set = true;
@@ -54,7 +60,7 @@ public:
 
 		offboard_setpoint_counter_ = 0;
 
-		auto timer_callback = [this, &vehicle_alt, &home_set]() -> void {
+		auto timer_callback = [this]() -> void {
 			if((offboard_setpoint_counter_ %4)==0){ RCLCPP_INFO(this->get_logger(),"Altitude : %f",vehicle_alt); }
 
 			if (offboard_setpoint_counter_ == 10) {
