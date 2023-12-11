@@ -65,13 +65,23 @@ add_executable(manual_control src/examples/offboard/manual_control.cpp)
 ament_target_dependencies(manual_control rclcpp px4_msgs)
 install(TARGETS manual_control DESTINATION lib/${PROJECT_NAME})
 
+# Add Python executable
+ament_python_install_package(${PROJECT_NAME})
+install(PROGRAMS
+  scripts/ps4_control.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install Python dependencies
+ament_python_requirements(PYTHON_REQUIRES python_version ">=3")
+
 
 ############
 # Install ##
 ############
 
 # Export information to downstream packages
-ament_export_dependencies(ament_cmake rclcpp rosidl_default_runtime eigen3_cmake_module Eigen3 px4_msgs geometry_msgs sensor_msgs)
+ament_export_dependencies(ament_cmake rclcpp rclpy rosidl_default_runtime eigen3_cmake_module Eigen3 px4_msgs geometry_msgs sensor_msgs)
 
 ament_export_targets(export_frame_transforms HAS_LIBRARY_TARGET)
 

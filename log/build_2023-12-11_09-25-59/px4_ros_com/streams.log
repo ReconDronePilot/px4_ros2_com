@@ -1,0 +1,28 @@
+[0.015s] Invoking command in '/root/ws/src/px4_ros2_com/build/px4_ros_com': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/foxy /usr/bin/cmake /root/ws/src/px4_ros2_com -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/root/ws/src/px4_ros2_com/install/px4_ros_com
+[0.027s] -- Found ament_cmake: 0.9.12 (/opt/ros/foxy/share/ament_cmake/cmake)
+[0.043s] -- Using PYTHON_EXECUTABLE: /usr/bin/python3
+[0.158s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[0.163s] -- Found builtin_interfaces: 1.0.0 (/opt/ros/foxy/share/builtin_interfaces/cmake)
+[0.181s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[0.184s] -- Found rosidl_adapter: 1.3.1 (/opt/ros/foxy/share/rosidl_adapter/cmake)
+[0.319s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[0.338s] -- Found eigen3_cmake_module: 0.1.1 (/opt/ros/foxy/share/eigen3_cmake_module/cmake)
+[0.339s] -- Found geometry_msgs: 2.0.5 (/opt/ros/foxy/share/geometry_msgs/cmake)
+[0.377s] -- Found px4_msgs: 2.0.1 (/root/ws/install/px4_msgs/share/px4_msgs/cmake)
+[0.388s] -- Found rclcpp: 2.4.3 (/opt/ros/foxy/share/rclcpp/cmake)
+[0.413s] -- Found rmw_implementation_cmake: 1.0.4 (/opt/ros/foxy/share/rmw_implementation_cmake/cmake)
+[0.414s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[0.502s] -- Found sensor_msgs: 2.0.5 (/opt/ros/foxy/share/sensor_msgs/cmake)
+[0.557s] CMake Error at /opt/ros/foxy/share/ament_cmake_python/cmake/ament_python_install_package.cmake:46 (message):
+[0.557s]   ament_python_install_package() the Python package folder
+[0.557s]   '/root/ws/src/px4_ros2_com/px4_ros_com' doesn't contain an '__init__.py'
+[0.557s]   file
+[0.557s] Call Stack (most recent call first):
+[0.557s]   /opt/ros/foxy/share/ament_cmake_python/cmake/ament_python_install_package.cmake:28 (_ament_cmake_python_install_package)
+[0.557s]   CMakeLists.txt:69 (ament_python_install_package)
+[0.557s] 
+[0.557s] 
+[0.558s] -- Configuring incomplete, errors occurred!
+[0.558s] See also "/root/ws/src/px4_ros2_com/build/px4_ros_com/CMakeFiles/CMakeOutput.log".
+[0.558s] See also "/root/ws/src/px4_ros2_com/build/px4_ros_com/CMakeFiles/CMakeError.log".
+[0.563s] Invoked command in '/root/ws/src/px4_ros2_com/build/px4_ros_com' returned '1': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/foxy /usr/bin/cmake /root/ws/src/px4_ros2_com -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/root/ws/src/px4_ros2_com/install/px4_ros_com
