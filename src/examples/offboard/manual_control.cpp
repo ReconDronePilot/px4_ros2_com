@@ -14,7 +14,7 @@
 #include <px4_msgs/msg/vehicle_air_data.hpp>
 #include <px4_msgs/msg/vehicle_global_position.hpp>
 #include <px4_msgs/msg/sensor_gps.hpp>
-#include "geometry_msgs/msg/twist.hpp"
+#include <geometry_msgs/msg/twist.hpp>
 
 #include <rclcpp/rclcpp.hpp>
 #include <stdint.h>
@@ -26,6 +26,7 @@
 using namespace std::chrono;
 using namespace std::chrono_literals;
 using namespace px4_msgs::msg;
+using namespace geometry_msgs::msg;
 
 float vehicle_alt;
 float vehicle_home_alt;
@@ -63,12 +64,12 @@ public:
 			vehicle_alt = msg->altitude_msl_m;
 			//RCLCPP_INFO(this->get_logger(), "Altitude : %f",msg.altitude_msl_m);
 		});
-		cmd_vel_subscription_ = create_subscription<geometry_msgs::msg::Twist>(
+		cmd_vel_subscription_ = this->create_subscription<Twist>(
             "cmd_vel", 10, std::bind(&OffboardControl::cmdVelCallback, this, std::placeholders::_1));
 
 		//---Main Program---//
 		auto timer_callback = [this]() -> void {
-			if((offboard_setpoint_counter_ %4)==0){ RCLCPP_INFO(this->get_logger(),"Altitude : %f",vehicle_alt); }
+			if((offboard_setpoint_counter_ %10)==0){ RCLCPP_INFO(this->get_logger(),"Altitude : %f",vehicle_alt); }
 
 			if (offboard_setpoint_counter_ == 10) {
 				// Change to Offboard mode after 10 setpoints

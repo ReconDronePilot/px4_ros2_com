@@ -15,26 +15,28 @@ def generate_launch_description():
         package='px4_ros_com',
         executable='manual_control',
         output='screen',
-        shell=True,
+        shell=True
     )
 
     # To detect ps4 controller
     joy_node = Node(
         package='joy',
         executable='joy_node',
-        name='joy_node',
-        parameters=[{'deadzone': 0.1}],
+        #name='joy_node',
+        output='screen',
+        parameters=[{'deadzone': 0.1}]
     )
 
     # Joy To cmd_vel
     controller = Node(
-        package='px4_ros_com',
-        executable='ps4_control.py',
-        output='screen',
+        package='joy_py',
+        executable='ps4_control',
+        output='screen'
         #parameters=[{'my_parameter': 'some_value'}]  # Add any additional parameters if needed
-    ),
+    )
 
     return LaunchDescription([
+        joy_node,
         controller,
         manual_control
     ])
