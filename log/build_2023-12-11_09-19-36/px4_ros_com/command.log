@@ -1,0 +1,2 @@
+Invoking command in '/root/ws/src/px4_ros2_com/build/px4_ros_com': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/foxy /usr/bin/cmake /root/ws/src/px4_ros2_com -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/root/ws/src/px4_ros2_com/install/px4_ros_com
+Invoked command in '/root/ws/src/px4_ros2_com/build/px4_ros_com' returned '1': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/foxy /usr/bin/cmake /root/ws/src/px4_ros2_com -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/root/ws/src/px4_ros2_com/install/px4_ros_com

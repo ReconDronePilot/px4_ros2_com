@@ -77,10 +77,18 @@ def generate_launch_description():
         shell=True,
     )
 
+    controller = Node(
+        package='px4_ros_com',
+        executable='ps4_control.py',
+        output='screen',
+        #parameters=[{'my_parameter': 'some_value'}]  # Add any additional parameters if needed
+    ),
+
     return LaunchDescription([
         #micro_ros_agent,
         #sensor_combined_listener_node
         #vehicle_gps_position_listener
         #offboard_control
+        controller,
         manual_control
     ])
