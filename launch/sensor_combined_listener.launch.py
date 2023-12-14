@@ -53,42 +53,21 @@ def generate_launch_description():
         package='px4_ros_com',
         executable='sensor_combined_listener',
         output='screen',
-        shell=True,
+        shell=True
     )
 
     vehicle_gps_position_listener = Node(
         package='px4_ros_com',
         executable='vehicle_gps_position_listener',
         output='screen',
-        shell=True,
+        shell=True
     )
-
-    offboard_control = Node(
-        package='px4_ros_com',
-        executable='offboard_control',
-        output='screen',
-        shell=True,
-    )
-
-    manual_control = Node(
-        package='px4_ros_com',
-        executable='manual_control',
-        output='screen',
-        shell=True,
-    )
-
-    controller = Node(
-        package='px4_ros_com',
-        executable='ps4_control.py',
-        output='screen',
-        #parameters=[{'my_parameter': 'some_value'}]  # Add any additional parameters if needed
-    ),
 
     return LaunchDescription([
         #micro_ros_agent,
-        #sensor_combined_listener_node
+        sensor_combined_listener_node
         #vehicle_gps_position_listener
         #offboard_control
-        controller,
-        manual_control
+        # controller,
+        # manual_control
     ])

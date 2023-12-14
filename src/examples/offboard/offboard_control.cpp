@@ -42,6 +42,7 @@
 #include <px4_msgs/msg/trajectory_setpoint.hpp>
 #include <px4_msgs/msg/vehicle_command.hpp>
 #include <px4_msgs/msg/vehicle_control_mode.hpp>
+#include <px4_msgs/msg/sensor_gps.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <stdint.h>
 
@@ -52,36 +53,80 @@ using namespace std::chrono;
 using namespace std::chrono_literals;
 using namespace px4_msgs::msg;
 
+float vehicle_alt;
+float vehicle_home_alt;
+bool home_set;
+float alt_err;	
+std::array<float, 3> max_velocity;
+
 class OffboardControl : public rclcpp::Node
 {
 public:
 	OffboardControl() : Node("offboard_control")
 	{
 
+		//---Variables---//
+		vehicle_alt = 0.0;
+		vehicle_home_alt = 0.0;
+		home_set = false;
+		alt_err = 1;
+		max_velocity = {0.2, 0.2, 0.2};
+		offboard_setpoint_counter_ = 0;
+
+		//---Publishers---//
 		offboard_control_mode_publisher_ = this->create_publisher<OffboardControlMode>("/fmu/in/offboard_control_mode", 10);
 		trajectory_setpoint_publisher_ = this->create_publisher<TrajectorySetpoint>("/fmu/in/trajectory_setpoint", 10);
 		vehicle_command_publisher_ = this->create_publisher<VehicleCommand>("/fmu/in/vehicle_command", 10);
+
+		//---Subscribers---//
+		rmw_qos_profile_t qos_profile = rmw_qos_profile_sensor_data;
+		auto qos = rclcpp::QoS(rclcpp::QoSInitialization(qos_profile.history, 5), qos_profile);
+
+		vehicle_gps_subscriber_ = this->create_subscription<SensorGps>("/fmu/out/vehicle_gps_position", qos,[this](const SensorGps::UniquePtr msg) {
+			if(!home_set){ 
+				vehicle_home_alt = msg->altitude_msl_m;
+				home_set = true;
+			}
+			vehicle_alt = msg->altitude_msl_m;
+			//RCLCPP_INFO(this->get_logger(), "Altitude : %f",msg.altitude_msl_m);
+		});
 
 		offboard_setpoint_counter_ = 0;
 
 		auto timer_callback = [this]() -> void {
 
+			//---Auto Control---//
 			if (offboard_setpoint_counter_ == 10) {
 				// Change to Offboard mode after 10 setpoints
 				this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
-
 				// Arm the vehicle
 				this->arm();
 			}
 
-			// offboard_control_mode needs to be paired with trajectory_setpoint
-			publish_offboard_control_mode();
-			publish_trajectory_setpoint();
-
-			// stop the counter after reaching 11
-			if (offboard_setpoint_counter_ < 11) {
-				offboard_setpoint_counter_++;
+			if(offboard_setpoint_counter_<=100 ){
+				this->publish_offboard_control_mode();
+				// takeoff();
+				this->publish_trajectory_setpoint(0.0, 0.0, 5.0, 3.14/2);
 			}
+
+			if(offboard_setpoint_counter_>100 && offboard_setpoint_counter_<=200 ){
+				this->publish_offboard_control_mode();
+				// takeoff();
+				this->publish_trajectory_setpoint(0.0, 0.0, 5.0, -3.14/2);
+			}
+
+			if(offboard_setpoint_counter_>200 && offboard_setpoint_counter_<=300 ){
+				this->publish_offboard_control_mode();
+				// takeoff();
+				this->publish_trajectory_setpoint(0.0, 0.0, -0.5, -3.14/2);
+				if(vehicle_home_alt >= vehicle_alt-alt_err && vehicle_home_alt <= vehicle_alt+alt_err) { this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_NAV_LAND); } // AJOUTER LAND()
+			}			
+			// stop the counter after reaching 11
+			if (offboard_setpoint_counter_ < 500) {
+				offboard_setpoint_counter_++;
+			}				
+
+			if((offboard_setpoint_counter_ %10)==0){ RCLCPP_INFO(this->get_logger(),"Altitude : %f",vehicle_alt); }
 		};
 		timer_ = this->create_wall_timer(100ms, timer_callback);
 	}
@@ -96,12 +141,14 @@ private:
 	rclcpp::Publisher<TrajectorySetpoint>::SharedPtr trajectory_setpoint_publisher_;
 	rclcpp::Publisher<VehicleCommand>::SharedPtr vehicle_command_publisher_;
 
+	rclcpp::Subscription<SensorGps>::SharedPtr vehicle_gps_subscriber_;
+
 	std::atomic<uint64_t> timestamp_;   //!< common synced timestamped
 
 	uint64_t offboard_setpoint_counter_;   //!< counter for the number of setpoints sent
 
 	void publish_offboard_control_mode();
-	void publish_trajectory_setpoint();
+	void publish_trajectory_setpoint(float x, float y, float z, float yaw);
 	void publish_vehicle_command(uint16_t command, float param1 = 0.0, float param2 = 0.0);
 };
 
@@ -146,11 +193,12 @@ void OffboardControl::publish_offboard_control_mode()
  *        For this example, it sends a trajectory setpoint to make the
  *        vehicle hover at 5 meters with a yaw angle of 180 degrees.
  */
-void OffboardControl::publish_trajectory_setpoint()
+void OffboardControl::publish_trajectory_setpoint(float x, float y, float z, float yaw)
 {
 	TrajectorySetpoint msg{};
-	msg.position = {0.0, 0.0, -5.0};
-	msg.yaw = -3.14; // [-PI:PI]
+	msg.position = {x, y, -z};
+	msg.yaw = yaw; 
+	msg.velocity = max_velocity;
 	msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
 	trajectory_setpoint_publisher_->publish(msg);
 }

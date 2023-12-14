@@ -24,7 +24,7 @@ def generate_launch_description():
         executable='joy_node',
         #name='joy_node',
         output='screen',
-        parameters=[{'deadzone': 0.1}]
+        parameters=[{'deadzone': 0.2}]
     )
 
     # Joy To cmd_vel
