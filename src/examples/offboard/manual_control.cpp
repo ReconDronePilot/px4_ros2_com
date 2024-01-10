@@ -10,6 +10,7 @@
 #include <px4_msgs/msg/offboard_control_mode.hpp>
 #include <px4_msgs/msg/trajectory_setpoint.hpp>
 #include <px4_msgs/msg/vehicle_command.hpp>
+#include <px4_msgs/msg/vehicle_command_ack.hpp>
 #include <px4_msgs/msg/vehicle_control_mode.hpp>
 #include <px4_msgs/msg/vehicle_air_data.hpp>
 #include <px4_msgs/msg/vehicle_global_position.hpp>
@@ -71,6 +72,8 @@ public:
 			//RCLCPP_INFO(this->get_logger(), "Altitude : %f",msg.altitude_msl_m);
 		});
 
+		vehicle_command_ack_subscriber_ = this->create_subscription<VehicleCommandAck>("/fmu/out/vehicle_command_ack",qos,std::bind(&OffboardControl::cmdAckCallback, this, std::placeholders::_1));
+
 		cmd_vel_subscription_ = this->create_subscription<Twist>("cmd_vel", 10, std::bind(&OffboardControl::cmdVelCallback, this, std::placeholders::_1));
 
 		//---Main Program------------------------------------------------------------------------------------------------------//
@@ -91,10 +94,10 @@ public:
 					// takeoff();
 					this->publish_trajectory_setpoint(0.0, 0.0, 5.0, 3.14/2);
 				}
-				if (offboard_setpoint_counter_ == 100 ){
-					// Change to manual control mode after 100 setpoints
-					this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 1); 
-				}
+				// if (offboard_setpoint_counter_ == 100 ){
+				// 	// Change to manual control mode after 100 setpoints
+				// 	this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 1); 
+				// }
 				if(offboard_setpoint_counter_ > 100){
 						
 					this->publish_manual_control_setpoint(cmd_vel_->linear.x, cmd_vel_->linear.y, cmd_vel_->linear.z);
@@ -123,6 +126,11 @@ private:
         // RCLCPP_INFO(get_logger(), "Linear Velocity x: %f,Linear Velocity y: %f, Linear Velocity z: %f",
         //             cmd_vel->linear.x, cmd_vel->linear.y, cmd_vel->linear.z);
     }
+
+	void cmdAckCallback(const VehicleCommandAck::SharedPtr cmd_ack)
+	{
+		RCLCPP_INFO(get_logger(), "Command ack: %u	Result: %d", cmd_ack->command, cmd_ack->result);
+	}
 	
 	rclcpp::TimerBase::SharedPtr timer_;
 
@@ -132,6 +140,7 @@ private:
 	rclcpp::Publisher<ManualControlSetpoint>::SharedPtr manual_control_publisher_;
 
 	rclcpp::Subscription<SensorGps>::SharedPtr vehicle_gps_subscriber_;
+	rclcpp::Subscription<VehicleCommandAck>::SharedPtr vehicle_command_ack_subscriber_;
 	rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_subscription_;
 
 	std::atomic<uint64_t> timestamp_;   //!< common synced timestamped
