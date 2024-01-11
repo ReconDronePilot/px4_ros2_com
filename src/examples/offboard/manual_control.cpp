@@ -17,7 +17,7 @@
 #include <px4_msgs/msg/vehicle_local_position_setpoint.hpp>
 #include <px4_msgs/msg/manual_control_setpoint.hpp>
 #include <px4_msgs/msg/sensor_gps.hpp>
-#include <geometry_msgs/msg/twist.hpp>
+#include <sensor_msgs/msg/joy.hpp>
 
 #include <rclcpp/rclcpp.hpp>
 #include <stdint.h>
@@ -28,16 +28,26 @@
 using namespace std::chrono;
 using namespace std::chrono_literals;
 using namespace px4_msgs::msg;
-using namespace geometry_msgs::msg;
 
 float vehicle_alt;
 float vehicle_home_alt;
 bool home_set;
 bool manual_control;
+bool armed = false;
 float alt_err;	
 std::array<float, 3> max_velocity;
 px4_msgs::msg::ManualControlSetpoint cmd_setpoint;
-geometry_msgs::msg::Twist::SharedPtr cmd_vel_;
+sensor_msgs::msg::Joy::SharedPtr cmd_vel_;
+
+
+int MANUAL_MODE = 1;
+int ALT_CTRL_MODE = 2;
+int POSCTL_MODE = 3;
+int AUTO_MODE = 4;
+int ACRO_MODE = 5;
+int OFFBOARD_MODE = 6;
+int STABILIZED_MODE = 7;
+int RATTITUDE_MODE = 8;
 
 class OffboardControl : public rclcpp::Node
 {
@@ -74,39 +84,38 @@ public:
 
 		vehicle_command_ack_subscriber_ = this->create_subscription<VehicleCommandAck>("/fmu/out/vehicle_command_ack",qos,std::bind(&OffboardControl::cmdAckCallback, this, std::placeholders::_1));
 
-		cmd_vel_subscription_ = this->create_subscription<Twist>("cmd_vel", 10, std::bind(&OffboardControl::cmdVelCallback, this, std::placeholders::_1));
+		cmd_vel_subscription_ = this->create_subscription<sensor_msgs::msg::Joy>("joy", 10, std::bind(&OffboardControl::cmdVelCallback, this, std::placeholders::_1));
 
 		//---Main Program------------------------------------------------------------------------------------------------------//
 		auto timer_callback = [this]() -> void {
 
 			if((offboard_setpoint_counter_ %10)==0){ RCLCPP_INFO(this->get_logger(),"Altitude : %f",vehicle_alt); }
 
-			if(!manual_control){
+			if(cmd_vel_ != nullptr){
 				//---Manual Control---//
-				if(offboard_setpoint_counter_ == 10) {
+				if(cmd_vel_->buttons[3]==1) {
+				//if(offboard_setpoint_counter_ == 10) {
 					// Change to Offboard mode after 10 setpoints
-					this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
+					this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, OFFBOARD_MODE);
 					// Arm the vehicle
 					this->arm();
+					armed = true;
 				}
-				if(offboard_setpoint_counter_<=100 ){
-					this->publish_offboard_control_mode();
-					// takeoff();
-					this->publish_trajectory_setpoint(0.0, 0.0, 5.0, 3.14/2);
-				}
-				// if (offboard_setpoint_counter_ == 100 ){
-				// 	// Change to manual control mode after 100 setpoints
-				// 	this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 1); 
-				// }
-				if(offboard_setpoint_counter_ > 100){
-						
-					this->publish_manual_control_setpoint(cmd_vel_->linear.x, cmd_vel_->linear.y, cmd_vel_->linear.z);
-				}
-				//this->publish_offboard_control_mode();
-			}else{
-				
-
 			}
+			if(offboard_setpoint_counter_<100 && armed==true){
+				this->publish_offboard_control_mode();
+				// // takeoff();
+				this->publish_trajectory_setpoint(0.0, 0.0, 5.0, 3.14/2);
+			}
+			if (offboard_setpoint_counter_ == 100 ){
+				// Change to manual control mode after 100 setpoints
+				//this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, ACRO_MODE); 
+			}
+			// if(offboard_setpoint_counter_ >= 100){
+					
+			// 	this->publish_manual_control_setpoint(cmd_vel_->linear.x, cmd_vel_->linear.y, cmd_vel_->linear.z);
+			// }
+			//this->publish_offboard_control_mode();
 			if (offboard_setpoint_counter_ < 500) {
 				offboard_setpoint_counter_++;
 			}
@@ -119,12 +128,12 @@ public:
 
 private:
 
-	void cmdVelCallback(const geometry_msgs::msg::Twist::SharedPtr cmd_vel)
+	void cmdVelCallback(const sensor_msgs::msg::Joy::SharedPtr cmd_vel)
     {
 		cmd_vel_ = cmd_vel;
-        // // Callback appelée à chaque fois qu'un message cmd_vel est reçu
-        // RCLCPP_INFO(get_logger(), "Linear Velocity x: %f,Linear Velocity y: %f, Linear Velocity z: %f",
-        //             cmd_vel->linear.x, cmd_vel->linear.y, cmd_vel->linear.z);
+        // Print status of the controller
+		//RCLCPP_INFO(get_logger(), "Controller: %d", cmd_vel->buttons[0]);
+
     }
 
 	void cmdAckCallback(const VehicleCommandAck::SharedPtr cmd_ack)
@@ -141,7 +150,7 @@ private:
 
 	rclcpp::Subscription<SensorGps>::SharedPtr vehicle_gps_subscriber_;
 	rclcpp::Subscription<VehicleCommandAck>::SharedPtr vehicle_command_ack_subscriber_;
-	rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_subscription_;
+	rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr cmd_vel_subscription_;
 
 	std::atomic<uint64_t> timestamp_;   //!< common synced timestamped
 
