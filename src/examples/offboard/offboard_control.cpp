@@ -196,7 +196,7 @@ void OffboardControl::publish_offboard_control_mode()
 void OffboardControl::publish_trajectory_setpoint(float x, float y, float z, float yaw)
 {
 	TrajectorySetpoint msg{};
-	msg.position = {x, y, -z};
+	msg.velocity = {x, y, -z};
 	msg.yaw = yaw; 
 	msg.velocity = max_velocity;
 	msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;

@@ -18,6 +18,7 @@
 #include <px4_msgs/msg/manual_control_setpoint.hpp>
 #include <px4_msgs/msg/sensor_gps.hpp>
 #include <sensor_msgs/msg/joy.hpp>
+#include <geometry_msgs/msg/twist.hpp>
 
 #include <rclcpp/rclcpp.hpp>
 #include <stdint.h>
@@ -32,12 +33,15 @@ using namespace px4_msgs::msg;
 float vehicle_alt;
 float vehicle_home_alt;
 bool home_set;
-bool manual_control;
+bool manual_control = false;
 bool armed = false;
-float alt_err;	
+float alt_err;
+float speed  = 3.0;
+
 std::array<float, 3> max_velocity;
 px4_msgs::msg::ManualControlSetpoint cmd_setpoint;
-sensor_msgs::msg::Joy::SharedPtr cmd_vel_;
+sensor_msgs::msg::Joy::SharedPtr joy_msg_;
+geometry_msgs::msg::Twist::SharedPtr twist_msg_;
 
 
 int MANUAL_MODE = 1;
@@ -63,13 +67,13 @@ public:
 		offboard_setpoint_counter_ = 0;
 		manual_control = false;
 
-		//---Publishers---//
+		//---Publishers----------------------------------------------//
 		offboard_control_mode_publisher_ = this->create_publisher<OffboardControlMode>("/fmu/in/offboard_control_mode", 10);
 		trajectory_setpoint_publisher_ = this->create_publisher<TrajectorySetpoint>("/fmu/in/trajectory_setpoint", 10);
 		vehicle_command_publisher_ = this->create_publisher<VehicleCommand>("/fmu/in/vehicle_command", 10);
 		manual_control_publisher_ = this->create_publisher<ManualControlSetpoint>("/fmu/in/manual_control_input",10);            
 
-		//---Subscribers---//
+		//---Subscribers---------------------------------------------//
 		rmw_qos_profile_t qos_profile = rmw_qos_profile_sensor_data;
 		auto qos = rclcpp::QoS(rclcpp::QoSInitialization(qos_profile.history, 5), qos_profile);
 
@@ -84,16 +88,20 @@ public:
 
 		vehicle_command_ack_subscriber_ = this->create_subscription<VehicleCommandAck>("/fmu/out/vehicle_command_ack",qos,std::bind(&OffboardControl::cmdAckCallback, this, std::placeholders::_1));
 
-		cmd_vel_subscription_ = this->create_subscription<sensor_msgs::msg::Joy>("joy", 10, std::bind(&OffboardControl::cmdVelCallback, this, std::placeholders::_1));
+		joy_subscriber_ = this->create_subscription<sensor_msgs::msg::Joy>("joy", 10, std::bind(&OffboardControl::joyCallback, this, std::placeholders::_1));
+
+		twist_subscriber_ = this->create_subscription<geometry_msgs::msg::Twist>("cmd_vel", 10, std::bind(&OffboardControl::twistCallback, this, std::placeholders::_1));
+
 
 		//---Main Program------------------------------------------------------------------------------------------------------//
 		auto timer_callback = [this]() -> void {
 
 			if((offboard_setpoint_counter_ %10)==0){ RCLCPP_INFO(this->get_logger(),"Altitude : %f",vehicle_alt); }
 
-			if(cmd_vel_ != nullptr){
+			if(joy_msg_ != nullptr){
 				//---Manual Control---//
-				if(cmd_vel_->buttons[3]==1) {
+				// Square button for Arm and then takeoff
+				if(joy_msg_->buttons[3]==1) {
 				//if(offboard_setpoint_counter_ == 10) {
 					// Change to Offboard mode after 10 setpoints
 					this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, OFFBOARD_MODE);
@@ -101,23 +109,27 @@ public:
 					this->arm();
 					armed = true;
 				}
+				// Triangle button for change mode to position control
+				if (joy_msg_->buttons[2]==1){
+					// Change to manual control mode after 100 setpoints
+					// this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, POSCTL_MODE); 
+					manual_control = true;
+				}
 			}
-			if(offboard_setpoint_counter_<100 && armed==true){
+			if(armed==true && manual_control == false) {
+				// Takeoff
 				this->publish_offboard_control_mode();
-				// // takeoff();
 				this->publish_trajectory_setpoint(0.0, 0.0, 5.0, 3.14/2);
 			}
-			if (offboard_setpoint_counter_ == 100 ){
-				// Change to manual control mode after 100 setpoints
-				//this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, ACRO_MODE); 
-			}
-			// if(offboard_setpoint_counter_ >= 100){
-					
-			// 	this->publish_manual_control_setpoint(cmd_vel_->linear.x, cmd_vel_->linear.y, cmd_vel_->linear.z);
-			// }
-			//this->publish_offboard_control_mode();
-			if (offboard_setpoint_counter_ < 500) {
-				offboard_setpoint_counter_++;
+			if(armed==true && manual_control==true){	
+				// Manual control
+				this->publish_offboard_control_mode();
+				this->publish_trajectory_velocity(
+					twist_msg_->linear.x * speed,
+					twist_msg_->linear.y * speed,
+					twist_msg_->linear.z * speed,
+					twist_msg_->angular.z * speed
+					);
 			}
 		};
 		timer_ = this->create_wall_timer(100ms, timer_callback); // call le the loop every 100ms
@@ -128,16 +140,23 @@ public:
 
 private:
 
-	void cmdVelCallback(const sensor_msgs::msg::Joy::SharedPtr cmd_vel)
+	void joyCallback(const sensor_msgs::msg::Joy::SharedPtr joy_msg)
     {
-		cmd_vel_ = cmd_vel;
+		joy_msg_ = joy_msg;
         // Print status of the controller
-		//RCLCPP_INFO(get_logger(), "Controller: %d", cmd_vel->buttons[0]);
-
+		//RCLCPP_INFO(get_logger(), "Controller: %d", joy_msg->buttons[0]);
     }
 
+	void twistCallback(const geometry_msgs::msg::Twist::SharedPtr twist_msg)
+    {
+		twist_msg_ = twist_msg;
+        // Print status of the controller
+		//RCLCPP_INFO(get_logger(), "CMD_VEL lin_x :%f	lin_y :%f	lin_z :%f	angular_z :%f", twist_msg->linear.x,twist_msg->linear.y,twist_msg->linear.z,twist_msg->angular.z);
+    }
+	
 	void cmdAckCallback(const VehicleCommandAck::SharedPtr cmd_ack)
 	{
+		// Result of commands received
 		RCLCPP_INFO(get_logger(), "Command ack: %u	Result: %d", cmd_ack->command, cmd_ack->result);
 	}
 	
@@ -150,7 +169,8 @@ private:
 
 	rclcpp::Subscription<SensorGps>::SharedPtr vehicle_gps_subscriber_;
 	rclcpp::Subscription<VehicleCommandAck>::SharedPtr vehicle_command_ack_subscriber_;
-	rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr cmd_vel_subscription_;
+	rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscriber_;
+	rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr twist_subscriber_;
 
 	std::atomic<uint64_t> timestamp_;   //!< common synced timestamped
 
@@ -219,14 +239,29 @@ void OffboardControl::takeoff()
 void OffboardControl::publish_offboard_control_mode()
 {
 	OffboardControlMode msg{};
-	msg.position = true;
-	msg.velocity = false;
+	msg.position = false;
+	msg.velocity = true;
 	msg.acceleration = false;
 	msg.attitude = false;
 	msg.body_rate = false;
 	msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
 	offboard_control_mode_publisher_->publish(msg);
 }
+
+// /**
+//  * @brief Publish the altitude control mode.
+//  */
+// void OffboardControl::publish_altitude_control_mode()
+// {
+// 	OffboardControlMode msg{};
+// 	msg.position = true;
+// 	msg.velocity = false;
+// 	msg.acceleration = false;
+// 	msg.attitude = false;
+// 	msg.body_rate = false;
+// 	msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
+// 	offboard_control_mode_publisher_->publish(msg);
+// }
 
 /**
  * @brief Publish a trajectory setpoint
@@ -236,7 +271,7 @@ void OffboardControl::publish_offboard_control_mode()
 void OffboardControl::publish_trajectory_setpoint(float x, float y, float z, float yaw)
 {
 	TrajectorySetpoint msg{};
-	msg.position = {x, y, -z};
+	msg.position = {x,y,-z};
 	msg.yaw = yaw; 
 	msg.velocity = max_velocity;
 	msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
@@ -246,8 +281,9 @@ void OffboardControl::publish_trajectory_setpoint(float x, float y, float z, flo
 void OffboardControl::publish_trajectory_velocity(float x_vel, float y_vel, float z_vel, float yaw)
 {
 	TrajectorySetpoint msg{};
-	msg.velocity = {x_vel, y_vel, z_vel};
-	msg.yaw = yaw;
+	msg.position = {std::nan(""), std::nan(""),std::nan("")};
+	msg.velocity = { x_vel, -y_vel, -z_vel };
+	msg.yaw = -yaw; 
 	msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
 	trajectory_setpoint_publisher_->publish(msg);
 }
