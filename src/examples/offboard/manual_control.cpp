@@ -35,6 +35,7 @@ float vehicle_home_alt;
 bool home_set;
 bool manual_control = false;
 bool armed = false;
+bool takeoff = false;
 float alt_err;
 float speed  = 3.0;
 
@@ -109,14 +110,22 @@ public:
 					this->arm();
 					armed = true;
 				}
-				// Triangle button for change mode to position control
+				// Round button for disarm
+				if(joy_msg_->buttons[1]==1) {
+					// disarm the vehicle
+					this->disarm();
+					armed = false;
+				}
+				// Triangle button for change mode to manual control
 				if (joy_msg_->buttons[2]==1){
-					// Change to manual control mode after 100 setpoints
-					// this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, POSCTL_MODE); 
 					manual_control = true;
 				}
+				// Up pad for takeoff
+				if (joy_msg_->buttons[11]==1){
+					takeoff = true;
+				}
 			}
-			if(armed==true && manual_control == false) {
+			if(armed==true && manual_control == false && takeoff == true) {
 				// Takeoff
 				this->publish_offboard_control_mode();
 				this->publish_trajectory_setpoint(0.0, 0.0, 5.0, 3.14/2);
