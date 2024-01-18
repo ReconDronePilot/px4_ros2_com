@@ -35,7 +35,7 @@ float vehicle_home_alt;
 bool home_set;
 bool manual_control = false;
 bool armed = false;
-bool takeoff = false;
+bool takeoffed = false;
 float alt_err;
 float speed  = 3.0;
 
@@ -97,7 +97,8 @@ public:
 		//---Main Program------------------------------------------------------------------------------------------------------//
 		auto timer_callback = [this]() -> void {
 
-			if((offboard_setpoint_counter_ %10)==0){ RCLCPP_INFO(this->get_logger(),"Altitude : %f",vehicle_alt); }
+			if((offboard_setpoint_counter_ %10)==0){ //RCLCPP_INFO(this->get_logger(),"Altitude : %f",vehicle_alt); 
+			}
 
 			if(joy_msg_ != nullptr){
 				//---Manual Control---//
@@ -120,19 +121,20 @@ public:
 				if (joy_msg_->buttons[2]==1){
 					manual_control = true;
 				}
-				// Up pad for takeoff
-				if (joy_msg_->buttons[11]==1){
-					takeoff = true;
+				// X for takeoff
+				if (joy_msg_->buttons[0]==1){
+					takeoffed = true;
 				}
 			}
-			if(armed==true && manual_control == false && takeoff == true) {
-				// Takeoff
+			if(armed==true) {
 				this->publish_offboard_control_mode();
+			}
+			if(armed==true && manual_control == false && takeoffed==true){
+				// Takeoff
 				this->publish_trajectory_setpoint(0.0, 0.0, 5.0, 3.14/2);
 			}
 			if(armed==true && manual_control==true){	
 				// Manual control
-				this->publish_offboard_control_mode();
 				this->publish_trajectory_velocity(
 					twist_msg_->linear.x * speed,
 					twist_msg_->linear.y * speed,
@@ -153,7 +155,7 @@ private:
     {
 		joy_msg_ = joy_msg;
         // Print status of the controller
-		//RCLCPP_INFO(get_logger(), "Controller: %d", joy_msg->buttons[0]);
+		//RCLCPP_INFO(get_logger(), "Controller pad_up: %d", joy_msg->buttons[11]);
     }
 
 	void twistCallback(const geometry_msgs::msg::Twist::SharedPtr twist_msg)
