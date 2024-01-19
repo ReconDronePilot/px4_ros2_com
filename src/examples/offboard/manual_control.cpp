@@ -19,6 +19,7 @@
 #include <px4_msgs/msg/sensor_gps.hpp>
 #include <sensor_msgs/msg/joy.hpp>
 #include <geometry_msgs/msg/twist.hpp>
+#include <uxr/client/client.h>
 
 #include <rclcpp/rclcpp.hpp>
 #include <stdint.h>
@@ -30,8 +31,8 @@ using namespace std::chrono;
 using namespace std::chrono_literals;
 using namespace px4_msgs::msg;
 
-float vehicle_alt;
-float vehicle_home_alt;
+double vehicle_alt;
+double vehicle_home_alt;
 bool home_set;
 bool manual_control = false;
 bool armed = false;
@@ -75,17 +76,29 @@ public:
 		manual_control_publisher_ = this->create_publisher<ManualControlSetpoint>("/fmu/in/manual_control_input",10);            
 
 		//---Subscribers---------------------------------------------//
+		// Simuation working
 		rmw_qos_profile_t qos_profile = rmw_qos_profile_sensor_data;
+		// Real Test
+		// uxrQoS_t qos_profile = {
+		// 	.durability = UXR_DURABILITY_VOLATILE,
+		// 	.reliability = UXR_RELIABILITY_BEST_EFFORT,
+		// 	.history = UXR_HISTORY_KEEP_LAST,
+		// 	.depth = queue_depth,
+		// };
 		auto qos = rclcpp::QoS(rclcpp::QoSInitialization(qos_profile.history, 5), qos_profile);
 
+		try {
 		vehicle_gps_subscriber_ = this->create_subscription<SensorGps>("/fmu/out/vehicle_gps_position", qos,[this](const SensorGps::UniquePtr msg) {
 			if(!home_set){ 
 				vehicle_home_alt = msg->altitude_msl_m;
 				home_set = true;
 			}
 			vehicle_alt = msg->altitude_msl_m;
-			//RCLCPP_INFO(this->get_logger(), "Altitude : %f",msg.altitude_msl_m);
+			RCLCPP_INFO(this->get_logger(), "Altitude : %f",msg.altitude_msl_m);
 		});
+		} catch(const std::exception& e){
+			RCLCPP_ERROR(this->get_logger(),"Exception");
+		}
 
 		vehicle_command_ack_subscriber_ = this->create_subscription<VehicleCommandAck>("/fmu/out/vehicle_command_ack",qos,std::bind(&OffboardControl::cmdAckCallback, this, std::placeholders::_1));
 
@@ -97,7 +110,7 @@ public:
 		//---Main Program------------------------------------------------------------------------------------------------------//
 		auto timer_callback = [this]() -> void {
 
-			if((offboard_setpoint_counter_ %10)==0){ //RCLCPP_INFO(this->get_logger(),"Altitude : %f",vehicle_alt); 
+			if((offboard_setpoint_counter_ %100)==0){ //RCLCPP_INFO(this->get_logger(),"Altitude : %f",vehicle_alt); 
 			}
 
 			if(joy_msg_ != nullptr){
