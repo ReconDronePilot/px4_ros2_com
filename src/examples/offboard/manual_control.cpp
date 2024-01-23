@@ -94,7 +94,7 @@ public:
 				home_set = true;
 			}
 			vehicle_alt = msg->altitude_msl_m;
-			RCLCPP_INFO(this->get_logger(), "Altitude : %f",msg.altitude_msl_m);
+			RCLCPP_INFO(this->get_logger(), "Altitude : %f",msg->altitude_msl_m);
 		});
 		} catch(const std::exception& e){
 			RCLCPP_ERROR(this->get_logger(),"Exception");
