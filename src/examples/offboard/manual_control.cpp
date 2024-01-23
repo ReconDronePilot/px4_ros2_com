@@ -144,7 +144,7 @@ public:
 			}
 			if(armed==true && manual_control == false && takeoffed==true){
 				// Takeoff
-				this->publish_trajectory_setpoint(0.0, 0.0, 5.0, 3.14/2);
+				this->publish_trajectory_setpoint(0.0, 0.0, 5.0, 0);
 			}
 			if(armed==true && manual_control==true){	
 				// Manual control
