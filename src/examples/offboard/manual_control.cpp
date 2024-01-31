@@ -38,9 +38,9 @@ bool manual_control = false;
 bool armed = false;
 bool takeoffed = false;
 float alt_err;
-float speed  = 3.0;
+float speed;
+float yaw_vel;
 
-std::array<float, 3> max_velocity;
 px4_msgs::msg::ManualControlSetpoint cmd_setpoint;
 sensor_msgs::msg::Joy::SharedPtr joy_msg_;
 geometry_msgs::msg::Twist::SharedPtr twist_msg_;
@@ -65,9 +65,11 @@ public:
 		vehicle_home_alt = 0.0;
 		home_set = false;
 		alt_err = 1;
-		max_velocity = {0.2, 0.2, 0.2};
 		offboard_setpoint_counter_ = 0;
 		manual_control = false;
+		speed = 3.0;
+		yaw_vel = 0.0;
+
 
 		//---Publishers----------------------------------------------//
 		offboard_control_mode_publisher_ = this->create_publisher<OffboardControlMode>("/fmu/in/offboard_control_mode", 10);
@@ -132,7 +134,7 @@ public:
 				}
 				// Triangle button for change mode to manual control
 				if (joy_msg_->buttons[2]==1){
-					manual_control = true;
+					manual_control = !manual_control;
 				}
 				// X for takeoff
 				if (joy_msg_->buttons[0]==1){
@@ -141,6 +143,7 @@ public:
 			}
 			if(armed==true) {
 				this->publish_offboard_control_mode();
+				this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_CHANGE_SPEED,0,1);
 			}
 			if(armed==true && manual_control == false && takeoffed==true){
 				// Takeoff
@@ -148,11 +151,12 @@ public:
 			}
 			if(armed==true && manual_control==true){	
 				// Manual control
+				yaw_vel += twist_msg_->angular.z * speed * 0.05;
 				this->publish_trajectory_velocity(
 					twist_msg_->linear.x * speed,
 					twist_msg_->linear.y * speed,
 					twist_msg_->linear.z * speed,
-					twist_msg_->angular.z * speed
+					yaw_vel
 					);
 			}
 		};
@@ -297,7 +301,7 @@ void OffboardControl::publish_trajectory_setpoint(float x, float y, float z, flo
 	TrajectorySetpoint msg{};
 	msg.position = {x,y,-z};
 	msg.yaw = yaw; 
-	msg.velocity = max_velocity;
+	//msg.velocity = {0.1, 0.1, 0.1};
 	msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
 	trajectory_setpoint_publisher_->publish(msg);
 }
