@@ -11,6 +11,8 @@
 #include <px4_msgs/msg/trajectory_setpoint.hpp>
 #include <px4_msgs/msg/vehicle_command.hpp>
 #include <px4_msgs/msg/vehicle_command_ack.hpp>
+#include <px4_msgs/msg/vehicle_status.hpp>
+#include <px4_msgs/msg/vehicle_local_position.hpp>
 #include <px4_msgs/msg/vehicle_control_mode.hpp>
 #include <px4_msgs/msg/vehicle_air_data.hpp>
 #include <px4_msgs/msg/vehicle_global_position.hpp>
@@ -40,6 +42,8 @@ bool takeoffed = false;
 float alt_err;
 float speed;
 float yaw_vel;
+float start_heading;
+float actuel_heading;
 
 px4_msgs::msg::ManualControlSetpoint cmd_setpoint;
 sensor_msgs::msg::Joy::SharedPtr joy_msg_;
@@ -69,6 +73,8 @@ public:
 		manual_control = false;
 		speed = 3.0;
 		yaw_vel = 0.0;
+		start_heading = 0.0;
+		actuel_heading = 0.0;
 
 
 		//---Publishers----------------------------------------------//
@@ -103,7 +109,9 @@ public:
 		}
 
 		vehicle_command_ack_subscriber_ = this->create_subscription<VehicleCommandAck>("/fmu/out/vehicle_command_ack",qos,std::bind(&OffboardControl::cmdAckCallback, this, std::placeholders::_1));
-
+		
+		vehicle_local_position_subscriber_ = this->create_subscription<VehicleLocalPosition>("/fmu/out/vehicle_local_position",qos,std::bind(&OffboardControl::localPositionCallback, this, std::placeholders::_1));
+		
 		joy_subscriber_ = this->create_subscription<sensor_msgs::msg::Joy>("joy", 10, std::bind(&OffboardControl::joyCallback, this, std::placeholders::_1));
 
 		twist_subscriber_ = this->create_subscription<geometry_msgs::msg::Twist>("cmd_vel", 10, std::bind(&OffboardControl::twistCallback, this, std::placeholders::_1));
@@ -147,10 +155,14 @@ public:
 			}
 			if(armed==true && manual_control == false && takeoffed==true){
 				// Takeoff
-				this->publish_trajectory_setpoint(0.0, 0.0, 5.0, 0);
+				this->publish_trajectory_setpoint(0.0, 0.0, 5.0, actuel_heading);
 			}
 			if(armed==true && manual_control==true){	
 				// Manual control
+				if(yaw_vel == 0.0)
+				{
+					yaw_vel = -start_heading;
+				}
 				yaw_vel += twist_msg_->angular.z * speed * 0.05;
 				this->publish_trajectory_velocity(
 					twist_msg_->linear.x * speed,
@@ -187,6 +199,15 @@ private:
 		// Result of commands received
 		RCLCPP_INFO(get_logger(), "Command ack: %u	Result: %d", cmd_ack->command, cmd_ack->result);
 	}
+
+	void localPositionCallback(const VehicleLocalPosition::SharedPtr msg)
+	{
+		//RCLCPP_INFO(get_logger(), "Vehicle Mode: %u", status->nav_state);
+		if(start_heading == 0.0){
+			start_heading = msg->heading;
+		}
+		actuel_heading = msg->heading;
+	}
 	
 	rclcpp::TimerBase::SharedPtr timer_;
 
@@ -197,9 +218,10 @@ private:
 
 	rclcpp::Subscription<SensorGps>::SharedPtr vehicle_gps_subscriber_;
 	rclcpp::Subscription<VehicleCommandAck>::SharedPtr vehicle_command_ack_subscriber_;
+	rclcpp::Subscription<VehicleLocalPosition>::SharedPtr vehicle_local_position_subscriber_;
 	rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscriber_;
 	rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr twist_subscriber_;
-
+	
 	std::atomic<uint64_t> timestamp_;   //!< common synced timestamped
 
 	uint64_t offboard_setpoint_counter_;   //!< counter for the number of setpoints sent
