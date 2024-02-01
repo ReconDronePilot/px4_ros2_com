@@ -166,6 +166,7 @@ public:
 					yaw_vel = -start_heading;
 				}
 				yaw_vel += twist_msg_->angular.z * speed * 0.05;
+				
 				this->publish_trajectory_velocity(
 					twist_msg_->linear.x * speed,
 					twist_msg_->linear.y * speed,
