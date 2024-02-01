@@ -20,6 +20,7 @@
 #include <px4_msgs/msg/manual_control_setpoint.hpp>
 #include <px4_msgs/msg/sensor_gps.hpp>
 #include <sensor_msgs/msg/joy.hpp>
+#include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <uxr/client/client.h>
 
@@ -116,7 +117,8 @@ public:
 
 		twist_subscriber_ = this->create_subscription<geometry_msgs::msg::Twist>("cmd_vel", 10, std::bind(&OffboardControl::twistCallback, this, std::placeholders::_1));
 
-
+		bunker_gps_subscriber_ = this->create_subscription<sensor_msgs::msg::NavSatFix>("/fix",10, std::bind(&OffboardControl::navSatFixCallback, this, std::placeholders::_1));
+		
 		//---Main Program------------------------------------------------------------------------------------------------------//
 		auto timer_callback = [this]() -> void {
 
@@ -200,13 +202,18 @@ private:
 		RCLCPP_INFO(get_logger(), "Command ack: %u	Result: %d", cmd_ack->command, cmd_ack->result);
 	}
 
-	void localPositionCallback(const VehicleLocalPosition::SharedPtr msg)
+	void localPositionCallback(const VehicleLocalPosition::SharedPtr pos)
 	{
 		//RCLCPP_INFO(get_logger(), "Vehicle Mode: %u", status->nav_state);
 		if(start_heading == 0.0){
-			start_heading = msg->heading;
+			start_heading = pos->heading;
 		}
-		actuel_heading = msg->heading;
+		actuel_heading = pos->heading;
+	}
+
+	void navSatFixCallback(const sensor_msgs::msg::NavSatFix::SharedPtr bunker_msg)
+	{
+		RCLCPP_INFO(get_logger(), "Bunker GPS lat: %f", bunker_msg->latitude);
 	}
 	
 	rclcpp::TimerBase::SharedPtr timer_;
@@ -221,6 +228,7 @@ private:
 	rclcpp::Subscription<VehicleLocalPosition>::SharedPtr vehicle_local_position_subscriber_;
 	rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscriber_;
 	rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr twist_subscriber_;
+	rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr bunker_gps_subscriber_;
 	
 	std::atomic<uint64_t> timestamp_;   //!< common synced timestamped
 
