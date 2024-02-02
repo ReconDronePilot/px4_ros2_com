@@ -19,6 +19,7 @@
 #include <px4_msgs/msg/vehicle_local_position_setpoint.hpp>
 #include <px4_msgs/msg/manual_control_setpoint.hpp>
 #include <px4_msgs/msg/sensor_gps.hpp>
+#include <px4_msgs/msg/goto_setpoint.hpp>
 #include <sensor_msgs/msg/joy.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <geometry_msgs/msg/twist.hpp>
@@ -82,7 +83,9 @@ public:
 		offboard_control_mode_publisher_ = this->create_publisher<OffboardControlMode>("/fmu/in/offboard_control_mode", 10);
 		trajectory_setpoint_publisher_ = this->create_publisher<TrajectorySetpoint>("/fmu/in/trajectory_setpoint", 10);
 		vehicle_command_publisher_ = this->create_publisher<VehicleCommand>("/fmu/in/vehicle_command", 10);
-		manual_control_publisher_ = this->create_publisher<ManualControlSetpoint>("/fmu/in/manual_control_input",10);            
+		vehicle_global_position_publisher_ = this->create_publisher<GotoSetpoint>("/fmu/in/goto_setpoint", 10);
+		manual_control_publisher_ = this->create_publisher<ManualControlSetpoint>("/fmu/in/manual_control_input",10);  
+
 
 		//---Subscribers---------------------------------------------//
 		// Simuation working
@@ -157,7 +160,8 @@ public:
 			}
 			if(armed==true && manual_control == false && takeoffed==true){
 				// Takeoff
-				this->publish_trajectory_setpoint(0.0, 0.0, 5.0, actuel_heading);
+				//this->publish_global_position(43.633335173061326,3.865603612636406, vehicle_home_alt + 5.0);
+				this->publish_global_position(0.0, 0.0, 5.0);
 			}
 			if(armed==true && manual_control==true){	
 				// Manual control
@@ -172,7 +176,7 @@ public:
 					twist_msg_->linear.y * speed,
 					twist_msg_->linear.z * speed,
 					yaw_vel
-					);
+				);
 			}
 		};
 		timer_ = this->create_wall_timer(100ms, timer_callback); // call le the loop every 100ms
@@ -223,6 +227,7 @@ private:
 	rclcpp::Publisher<TrajectorySetpoint>::SharedPtr trajectory_setpoint_publisher_;
 	rclcpp::Publisher<VehicleCommand>::SharedPtr vehicle_command_publisher_;
 	rclcpp::Publisher<ManualControlSetpoint>::SharedPtr manual_control_publisher_;
+	rclcpp::Publisher<GotoSetpoint>::SharedPtr vehicle_global_position_publisher_;
 
 	rclcpp::Subscription<SensorGps>::SharedPtr vehicle_gps_subscriber_;
 	rclcpp::Subscription<VehicleCommandAck>::SharedPtr vehicle_command_ack_subscriber_;
@@ -240,6 +245,7 @@ private:
 	void publish_trajectory_velocity(float x_vel, float y_vel, float z_vel, float yaw);
 	void publish_vehicle_command(uint16_t command, float param1 = 0.0, float param2 = 0.0);
 	void publish_manual_control_setpoint(float x_vel, float y_vel, float z_vel);
+	void publish_global_position(float x, float y, float z);
 	void orbit(float radius, float vel);
 	void takeoff();
 };
@@ -346,6 +352,17 @@ void OffboardControl::publish_trajectory_velocity(float x_vel, float y_vel, floa
 	msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
 	trajectory_setpoint_publisher_->publish(msg);
 }
+
+void OffboardControl::publish_global_position(float x, float y, float z)
+{
+	GotoSetpoint msg{};
+	msg.position = {x,y,-z};
+	msg.flag_set_max_horizontal_speed = true;
+	msg.max_horizontal_speed = 9.0;
+	msg.timestamp = this->get_clock()->now().nanoseconds() / 1000;
+	vehicle_global_position_publisher_->publish(msg);
+}
+
 
 void OffboardControl::publish_manual_control_setpoint(float x_vel, float y_vel, float z_vel)
 {
